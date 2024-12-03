@@ -41,9 +41,9 @@ fn main() {
     let pw = PartialWitness::<F>::new();
 
     // Generate the proof
-    let proof = circuit.prove(pw).expect("Proof generation failed");
+    let proof = circuit.prove(pw);
 
     // Verify the proof
-    let verified = circuit.verify(proof).is_ok();
+    let verified = circuit.verify(proof.unwrap()).is_ok();
     println!("Proof verified: {}", verified);
 }

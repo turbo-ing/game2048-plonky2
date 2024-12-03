@@ -33,8 +33,8 @@ fn game2048_generate_proof(c: &mut Criterion) {
             let circuit = builder.build::<PoseidonGoldilocksConfig>();
             let pw = PartialWitness::<F>::new();
 
-            let proof = circuit.prove(pw).expect("Proof generation failed");
-            assert!(circuit.verify(proof).is_ok(), "Proof verification failed");
+            let proof = circuit.prove(pw);
+            assert!(circuit.verify(proof.unwrap()).is_ok(), "Proof verification failed");
         });
     });
 }
