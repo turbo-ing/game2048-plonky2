@@ -1,16 +1,12 @@
-mod game2048;
-
-use game2048::{Game2048Circuit, F, D};
+use criterion::{criterion_group, criterion_main, Criterion};
+use game2048_plonky2::game2048::{Game2048Circuit, F, D};
 use plonky2::field::types::Field;
 use plonky2::iop::witness::PartialWitness;
 use plonky2::plonk::circuit_builder::CircuitBuilder;
-use plonky2::plonk::config::PoseidonGoldilocksConfig;
 use plonky2::plonk::circuit_data::CircuitConfig;
+use plonky2::plonk::config::PoseidonGoldilocksConfig;
 
-type C = PoseidonGoldilocksConfig;
-
-fn main() {
-    // Example board states as inputs (using F type)
+fn game2048_generate_proof(c: &mut Criterion) {
     let before_board: Vec<F> = vec![
         F::from_canonical_u32(2), F::from_canonical_u32(2), F::ZERO,                    F::from_canonical_u32(4),
         F::ZERO,                  F::ZERO,                  F::from_canonical_u32(4),   F::ZERO,
@@ -27,23 +23,21 @@ fn main() {
 
     let direction = "up";
 
-    // Initialize the circuit builder
-    let config = CircuitConfig::standard_recursion_config();
-    let mut builder = CircuitBuilder::<F, D>::new(config);
+    c.bench_function("game2048_prove_and_verify", |b| {
+        b.iter(|| {
+            let config = CircuitConfig::standard_recursion_config();
+            let mut builder = CircuitBuilder::<F, D>::new(config);
 
-    // Add constraints for the game logic directly using F values
-    Game2048Circuit::build_circuit(&mut builder, &before_board, &after_board, direction);
+            Game2048Circuit::build_circuit(&mut builder, &before_board, &after_board, direction);
 
-    // Build the circuit
-    let circuit = builder.build::<C>();
+            let circuit = builder.build::<PoseidonGoldilocksConfig>();
+            let pw = PartialWitness::<F>::new();
 
-    // Create a partial witness (empty in this case, as we're directly using F)
-    let pw = PartialWitness::<F>::new();
-
-    // Generate the proof
-    let proof = circuit.prove(pw).expect("Proof generation failed");
-
-    // Verify the proof
-    let verified = circuit.verify(proof).is_ok();
-    println!("Proof verified: {}", verified);
+            let proof = circuit.prove(pw).expect("Proof generation failed");
+            assert!(circuit.verify(proof).is_ok(), "Proof verification failed");
+        });
+    });
 }
+
+criterion_group!(game2048_benchmark, game2048_generate_proof);
+criterion_main!(game2048_benchmark);
