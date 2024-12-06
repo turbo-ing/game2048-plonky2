@@ -8,17 +8,17 @@ use plonky2::plonk::config::PoseidonGoldilocksConfig;
 fn main() {
     // Input boards and direction
     let before_board: Vec<F> = vec![
-        F::from_canonical_u32(2), F::ZERO, F::from_canonical_u32(2), F::from_canonical_u32(4),
-        F::from_canonical_u32(4), F::from_canonical_u32(4), F::ZERO, F::ZERO,
-        F::from_canonical_u32(8), F::ZERO, F::ZERO, F::from_canonical_u32(8),
-        F::ZERO, F::from_canonical_u32(4), F::ZERO, F::ZERO,
+        F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(4),
+        F::from_canonical_u32(4), F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(2),
+        F::from_canonical_u32(8), F::from_canonical_u32(8), F::from_canonical_u32(4), F::from_canonical_u32(8),
+        F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(2), F::from_canonical_u32(2),
     ];
 
     let after_board: Vec<F> = vec![
-        F::from_canonical_u32(2), F::from_canonical_u32(8), F::from_canonical_u32(2), F::from_canonical_u32(4),
-        F::from_canonical_u32(8), F::ZERO, F::ZERO, F::from_canonical_u32(8),
-        F::ZERO, F::from_canonical_u32(4), F::ZERO, F::ZERO,
-        F::ZERO, F::ZERO, F::ZERO, F::ZERO,
+        F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(4), F::from_canonical_u32(4),
+        F::from_canonical_u32(4), F::from_canonical_u32(8), F::from_canonical_u32(4), F::from_canonical_u32(2),
+        F::from_canonical_u32(8), F::from_canonical_u32(4), F::from_canonical_u32(2), F::from_canonical_u32(8),
+        F::from_canonical_u32(2), F::from_canonical_u32(0), F::from_canonical_u32(0), F::from_canonical_u32(2),
     ];
 
     // Direction: "up"

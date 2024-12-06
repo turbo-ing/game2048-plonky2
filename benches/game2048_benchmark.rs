@@ -33,16 +33,16 @@ fn game2048_generate_proof(c: &mut Criterion) {
 
             // Assign values for before_board
             for (i, &target) in before_board_targets.iter().enumerate() {
-                pw.set_target(target, before_board[i]).expect("Failed to set target");
+                pw.set_target(target, before_board[i]).unwrap();
             }
 
             // Assign values for after_board
             for (i, &target) in after_board_targets.iter().enumerate() {
-                pw.set_target(target, after_board[i]).expect("Failed to set target");
+                pw.set_target(target, after_board[i]).unwrap();
             }
 
             // Assign the direction
-            pw.set_target(direction_target, direction).expect("Failed to set target");
+            pw.set_target(direction_target, direction).unwrap();
 
             let proof = circuit.prove(pw);
             assert!(circuit.verify(proof.unwrap()).is_ok(), "Proof verification failed");
