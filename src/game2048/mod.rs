@@ -165,64 +165,12 @@ impl Game2048Circuit {
     pub fn merge_2048_row(builder: &mut CircuitBuilder<F, D>, a: Target, b: Target, c: Target, d: Target) -> [Target; 4] {
         let zero = builder.zero();
 
-        // Helper booleans for zero-check
-        let a_eq_zero = builder.is_equal(a, zero);
-        let a_nonzero = builder.not(a_eq_zero);
-
-        let b_eq_zero = builder.is_equal(b, zero);
-        let b_nonzero = builder.not(b_eq_zero);
-
-        let c_eq_zero = builder.is_equal(c, zero);
-        let c_nonzero = builder.not(c_eq_zero);
-
-        let d_eq_zero = builder.is_equal(d, zero);
-        let d_nonzero = builder.not(d_eq_zero);
-
-        // Step 1: Compact nonzero tiles to the left
-        //
-        // x0 = first nonzero tile from [a,b,c,d] or zero if none
-        // If a is nonzero, x0 = a
-        // Else if b is nonzero, x0 = b, else if c is nonzero, x0 = c, else if d is nonzero, x0 = d, else 0
-        // For candidate_if_not_a:
-        let tmp_d = builder._if(d_nonzero, d, zero);
-        let tmp_c = builder._if(c_nonzero, c, tmp_d);
-        let candidate_if_not_a = builder._if(b_nonzero, b, tmp_c);
-        let x0 = builder._if(a_nonzero, a, candidate_if_not_a);
-
-        // x1 = second nonzero tile (after x0)
-        // If x0 came from a (a_nonzero=1), then we skip 'a' and pick next from [b,c,d].
-        // If x0 did not come from a, it means a=0, so x0 came from b,c or d. Then we must pick next after that.
-        // For x1_if_x0_from_a:
-        let tmp_d2 = builder._if(d_nonzero, d, zero);
-        let tmp_c2 = builder._if(c_nonzero, c, tmp_d2);
-        let x1_if_x0_from_a = builder._if(b_nonzero, b, tmp_c2);
-
-        // If x0 was not from a, we know a=0.
-        // If x0 from b (b_nonzero=1), then x1 = next nonzero from [c,d].
-        // If b=0, x0 from c => x1 = next nonzero from [d]
-        // If c=0 too, x0 from d or no tile => x1=0
-        let x1_if_x0_not_a = {
-            let tem_d = builder._if(d_nonzero, d, zero);
-            let x1_if_x0_b = builder._if(c_nonzero, c, tem_d);
-            let x1_if_x0_c = builder._if(d_nonzero, d, zero);
-            let x1_if_x0_d = zero;
-            // If x0=b -> b_nonzero=1 => x1=x1_if_x0_b
-            // else if x0=c -> c_nonzero=1 => x1=x1_if_x0_c
-            // else x1= x1_if_x0_d
-            let tem_c = builder._if(c_nonzero, x1_if_x0_c, x1_if_x0_d);
-            builder._if(b_nonzero, x1_if_x0_b, tem_c)
-        };
-
-        let x1 = builder._if(a_nonzero, x1_if_x0_from_a, x1_if_x0_not_a);
-
-        // Similarly, x2 and x3 can be determined by continuing this logic.
-        // For brevity, let's assume a simplified approach:  
-        // After picking x0,x1 as first two nonzeros, pick x2 as the third nonzero, x3 as the fourth.
-        // This code can be expanded similarly to x0,x1 using _if logic.
-
-        let remaining = Self::pick_remaining(builder, a, b, c, d);
-        let x2 = remaining[0];
-        let x3 = remaining[1];
+        // // Step 1: Compact nonzero tiles to the left
+        let result = Self::shift_nonzero_left(builder, a, b, c, d, zero);
+        let x0 = result[0];
+        let x1 = result[1];
+        let x2 = result[2];
+        let x3 = result[3];
 
         // Step 2: Merge logic
         // Merge from left:
@@ -267,9 +215,8 @@ impl Game2048Circuit {
     /// A simplified helper that picks remaining two tiles after x0 and x1.
     /// In a complete solution, you'd replicate the zero-skipping logic as above.
     /// For demonstration, we assume you have a similar pattern.
-    fn pick_remaining(builder: &mut CircuitBuilder<F, D>, a: Target, b: Target, c: Target, d: Target) -> [Target; 2] {
-        let zero = builder.zero();
-        // Compute nonzero conditions
+    fn shift_nonzero_left(builder: &mut CircuitBuilder<F, D>, a: Target, b: Target, c: Target, d: Target, zero: Target) -> [Target; 4] {
+        // Helper booleans for zero-check
         let a_eq_zero = builder.is_equal(a, zero);
         let a_nonzero = builder.not(a_eq_zero);
 
@@ -281,6 +228,48 @@ impl Game2048Circuit {
 
         let d_eq_zero = builder.is_equal(d, zero);
         let d_nonzero = builder.not(d_eq_zero);
+
+        // Step 1: Compact nonzero tiles to the left
+        //
+        // x0 = first nonzero tile from [a,b,c,d] or zero if none
+        // If a is nonzero, x0 = a
+        // Else if b is nonzero, x0 = b, else if c is nonzero, x0 = c, else if d is nonzero, x0 = d, else 0
+        // For candidate_if_not_a:
+        let tmp_d = builder._if(d_nonzero, d, zero);
+        let tmp_c = builder._if(c_nonzero, c, tmp_d);
+        let candidate_if_not_a = builder._if(b_nonzero, b, tmp_c);
+        let frist_nonzero_val = builder._if(a_nonzero, a, candidate_if_not_a);
+
+        // x1 = second nonzero tile (after x0)
+        // If x0 came from a (a_nonzero=1), then we skip 'a' and pick next from [b,c,d].
+        // If x0 did not come from a, it means a=0, so x0 came from b,c or d. Then we must pick next after that.
+        // For x1_if_x0_from_a:
+        let tmp_d2 = builder._if(d_nonzero, d, zero);
+        let tmp_c2 = builder._if(c_nonzero, c, tmp_d2);
+        let x1_if_x0_from_a = builder._if(b_nonzero, b, tmp_c2);
+
+        // If x0 was not from a, we know a=0.
+        // If x0 from b (b_nonzero=1), then x1 = next nonzero from [c,d].
+        // If b=0, x0 from c => x1 = next nonzero from [d]
+        // If c=0 too, x0 from d or no tile => x1=0
+        let x1_if_x0_not_a = {
+            let tem_d = builder._if(d_nonzero, d, zero);
+            let x1_if_x0_b = builder._if(c_nonzero, c, tem_d);
+            let x1_if_x0_c = builder._if(d_nonzero, d, zero);
+            let x1_if_x0_d = zero;
+            // If x0=b -> b_nonzero=1 => x1=x1_if_x0_b
+            // else if x0=c -> c_nonzero=1 => x1=x1_if_x0_c
+            // else x1= x1_if_x0_d
+            let tem_c = builder._if(c_nonzero, x1_if_x0_c, x1_if_x0_d);
+            builder._if(b_nonzero, x1_if_x0_b, tem_c)
+        };
+
+        let second_nonzero_val = builder._if(a_nonzero, x1_if_x0_from_a, x1_if_x0_not_a);
+
+        // Similarly, x2 and x3 can be determined by continuing this logic.
+        // For brevity, let's assume a simplified approach:  
+        // After picking x0,x1 as first two nonzeros, pick x2 as the third nonzero, x3 as the fourth.
+        // This code can be expanded similarly to x0,x1 using _if logic.
 
         // Determine booleans to know which tile was picked as first_nonzero:
         // x0_from_a = a_nonzero and no other chosen before
@@ -478,6 +467,6 @@ impl Game2048Circuit {
         //
         // According to our main logic, x2 = third_nonzero_val and x3 = fourth_nonzero_val.
 
-        [third_nonzero_val, fourth_nonzero_val]
+        [frist_nonzero_val, second_nonzero_val, third_nonzero_val, fourth_nonzero_val]
     }
 }
