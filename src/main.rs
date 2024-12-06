@@ -8,21 +8,21 @@ use plonky2::plonk::config::PoseidonGoldilocksConfig;
 fn main() {
     // Input boards and direction
     let before_board: Vec<F> = vec![
+        F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(8),
+        F::from_canonical_u32(2), F::from_canonical_u32(0), F::from_canonical_u32(4), F::from_canonical_u32(4),
         F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(4),
-        F::from_canonical_u32(4), F::from_canonical_u32(2), F::from_canonical_u32(2), F::from_canonical_u32(2),
-        F::from_canonical_u32(8), F::from_canonical_u32(8), F::from_canonical_u32(4), F::from_canonical_u32(8),
-        F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(2), F::from_canonical_u32(2),
+        F::from_canonical_u32(0), F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(4),
     ];
 
     let after_board: Vec<F> = vec![
-        F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(4), F::from_canonical_u32(4),
-        F::from_canonical_u32(4), F::from_canonical_u32(8), F::from_canonical_u32(4), F::from_canonical_u32(2),
-        F::from_canonical_u32(8), F::from_canonical_u32(4), F::from_canonical_u32(2), F::from_canonical_u32(8),
-        F::from_canonical_u32(2), F::from_canonical_u32(0), F::from_canonical_u32(0), F::from_canonical_u32(2),
+        F::from_canonical_u32(0), F::from_canonical_u32(4), F::from_canonical_u32(4), F::from_canonical_u32(8),
+        F::from_canonical_u32(0), F::from_canonical_u32(0), F::from_canonical_u32(2), F::from_canonical_u32(8),
+        F::from_canonical_u32(0), F::from_canonical_u32(2), F::from_canonical_u32(4), F::from_canonical_u32(4),
+        F::from_canonical_u32(0), F::from_canonical_u32(0), F::from_canonical_u32(2), F::from_canonical_u32(8),
     ];
 
-    // Direction: "up"
-    let direction = F::from_canonical_u32(0); // 0 for "up", as defined in the circuit
+    // Direction: "right"
+    let direction = F::from_canonical_u32(3); // 0 for "right", as defined in the circuit
 
     // Build the circuit
     let (circuit_builder, targets) = Game2048Circuit::build_circuit();

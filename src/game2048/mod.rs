@@ -174,42 +174,89 @@ impl Game2048Circuit {
 
         // Step 2: Merge logic
         // Merge from left:
-        // If x0 == x1 and both nonzero, merge: x0 = 2*x0, shift left x2->x1, x3->x2, put 0 in x3.
-        let x0_eq_x1 = builder.is_equal(x0, x1);
-        let x0_zero = builder.is_equal(x0, zero);
-        let x0_nonzero_final = builder.not(x0_zero);
-        let x1_zero = builder.is_equal(x1, zero);
-        let x1_nonzero_final = builder.not(x1_zero);
-        let x0_and_x1_nonzero = builder.and(x0_nonzero_final, x1_nonzero_final);
-        let can_merge_x0_x1 = builder.and(x0_eq_x1, x0_and_x1_nonzero);
+        // Check (x0,x1)
+        let eq_x0_x1 = builder.is_equal(x0,x1);
+        let x0_eq_zero = builder.is_equal(x0,zero);
+        let x1_eq_zero = builder.is_equal(x1,zero);
+        let x0_nonzero = builder.not(x0_eq_zero);
+        let x1_nonzero = builder.not(x1_eq_zero);
+        let can_merge_x0_x1_pre = builder.and(eq_x0_x1, x0_nonzero);
+        let can_merge_x0_x1 = builder.and(can_merge_x0_x1_pre, x1_nonzero);
 
-        let merged_x0 = Self::double_if(builder, x0, can_merge_x0_x1);
-        let x1_after_merge = builder._if(can_merge_x0_x1, x2, x1);
-        let x2_after_merge = builder._if(can_merge_x0_x1, x3, x2);
-        let x3_after_merge = builder._if(can_merge_x0_x1, zero, x3);
+        // Merge (x0,x1) if possible
+        let two = builder.constant(F::from_canonical_u64(2));
+        let doubled_x0 = builder.mul(x0,two);
 
-        // Then merge x1,x2 if possible:
-        let x1_eq_x2 = builder.is_equal(x1_after_merge, x2_after_merge);
-        let x1_after_merge_zero = builder.is_equal(x1_after_merge, zero);
-        let x1_nonzero2 = builder.not(x1_after_merge_zero);
-        let x2_after_merge_zero = builder.is_equal(x2_after_merge, zero);
-        let x2_nonzero2 = builder.not(x2_after_merge_zero);
-        let x1_and_x2_nonzero = builder.and(x1_nonzero2, x2_nonzero2);
-        let can_merge_x1_x2 = builder.and(x1_eq_x2, x1_and_x2_nonzero);
+        let nx0 = builder._if(can_merge_x0_x1, doubled_x0, x0);
+        let mut nx1 = builder._if(can_merge_x0_x1, x2, x1);
+        let mut nx2 = builder._if(can_merge_x0_x1, x3, x2);
+        let mut nx3 = builder._if(can_merge_x0_x1, zero, x3);
 
-        let merged_x1 = Self::double_if(builder, x1_after_merge, can_merge_x1_x2);
-        let x2_final = builder._if(can_merge_x1_x2, x3_after_merge, x2_after_merge);
-        let x3_final = builder._if(can_merge_x1_x2, zero, x3_after_merge);
+        let not_merged_x0_x1 = builder.not(can_merge_x0_x1);
 
-        [merged_x0, merged_x1, x2_final, x3_final]
-    }
+        // If merged at (x0,x1), we skip checking (x1,x2) and go directly to (x2,x3).
+        // If not merged at (x0,x1), we check (x1,x2).
 
-    /// Double val if cond is true, else val.
-    fn double_if(builder: &mut CircuitBuilder<F, D>, val: Target, cond: BoolTarget) -> Target {
-        let zero = builder.zero();
-        let two = builder.two();
-        let doubled = builder.mul_add(val, two, zero);
-        builder._if(cond, doubled, val)
+        // Check (x1,x2) only if not merged at (x0,x1)
+        let eq_x1_x2 = builder.is_equal(nx1,nx2);
+        let x1_eq_zero2 = builder.is_equal(nx1,zero);
+        let x2_eq_zero2 = builder.is_equal(nx2,zero);
+        let x1_nonzero2 = builder.not(x1_eq_zero2);
+        let x2_nonzero2 = builder.not(x2_eq_zero2);
+        let can_merge_x1_x2_pre = builder.and(eq_x1_x2, x1_nonzero2);
+        let can_merge_x1_x2 = builder.and(can_merge_x1_x2_pre, x2_nonzero2);
+
+        let do_x1_x2_merge = builder.and(not_merged_x0_x1, can_merge_x1_x2);
+
+        let doubled_x1 = builder.mul(nx1,two);
+        nx1 = builder._if(do_x1_x2_merge, doubled_x1, nx1);
+        nx2 = builder._if(do_x1_x2_merge, nx3, nx2);
+        nx3 = builder._if(do_x1_x2_merge, zero, nx3);
+
+        // If merged at (x1,x2), skip (x2,x3).
+        // If merged at (x0,x1), we want to check (x2,x3).
+        // If not merged at (x0,x1) and not merged at (x1,x2), we check (x2,x3).
+
+        let not_merged_x1_x2 = builder.not(do_x1_x2_merge);
+
+        // Conditions for checking (x2,x3):
+        // - If merged at (x0,x1), check (x2,x3).
+        // - If not merged at (x0,x1) and not merged at (x1,x2), check (x2,x3).
+        // - If merged at (x1,x2), do NOT check (x2,x3).
+
+        // This ensures that if we merged at x0,x1 or no merges happened so far, we still check x2,x3. 
+        // If we merged at x1,x2, not_merged_x1_x2=0 and can_merge_x0_x1=0, 
+        // so check_x2_x3=0 => no check.
+
+        // Actually, refine logic for check_x2_x3:
+        // - Merged at (x0,x1): can_merge_x0_x1=1 => check_x2_x3=1
+        // - Not merged at (x0,x1) (means can_merge_x0_x1=0):
+        //    If merged at (x1,x2) (do_x1_x2_merge=1) => no check_x2_x3=0
+        //    Else no merges (do_x1_x2_merge=0) => check_x2_x3=1
+        //
+        // We can achieve this by:
+        // check_x2_x3 = can_merge_x0_x1 OR (not_merged_x0_x1 AND not_merged_x1_x2)
+        let not_merged_x0_x1_and_not_x1_x2 = builder.and(not_merged_x0_x1, not_merged_x1_x2);
+        let check_x2_x3_final = builder.or(can_merge_x0_x1, not_merged_x0_x1_and_not_x1_x2);
+
+        // Check (x2,x3) if allowed
+        let eq_x2_x3 = builder.is_equal(nx2,nx3);
+        let x2_eq_zero3 = builder.is_equal(nx2,zero);
+        let x3_eq_zero3 = builder.is_equal(nx3,zero);
+        let x2_nonzero3 = builder.not(x2_eq_zero3);
+        let x3_nonzero3 = builder.not(x3_eq_zero3);
+        let can_merge_x2_x3_pre = builder.and(eq_x2_x3, x2_nonzero3);
+        let can_merge_x2_x3 = builder.and(can_merge_x2_x3_pre, x3_nonzero3);
+
+        let do_x2_x3_merge_pre = builder.and(check_x2_x3_final, can_merge_x2_x3);
+        let do_x2_x3_merge = do_x2_x3_merge_pre;
+
+        let doubled_x2 = builder.mul(nx2,two);
+        nx2 = builder._if(do_x2_x3_merge, doubled_x2, nx2);
+        nx3 = builder._if(do_x2_x3_merge, zero, nx3);
+
+        // Now [nx0, nx1, nx2, nx3] is fully merged according to 2048 rules.
+        [nx0, nx1, nx2, nx3]
     }
 
     /// A simplified helper that picks remaining two tiles after x0 and x1.
