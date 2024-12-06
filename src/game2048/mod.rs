@@ -220,7 +220,7 @@ impl Game2048Circuit {
         // After picking x0,x1 as first two nonzeros, pick x2 as the third nonzero, x3 as the fourth.
         // This code can be expanded similarly to x0,x1 using _if logic.
 
-        let remaining = Self::pick_remaining(builder, a, b, c, d, x0, x1, zero);
+        let remaining = Self::pick_remaining(builder, a, b, c, d);
         let x2 = remaining[0];
         let x3 = remaining[1];
 
@@ -267,7 +267,8 @@ impl Game2048Circuit {
     /// A simplified helper that picks remaining two tiles after x0 and x1.
     /// In a complete solution, you'd replicate the zero-skipping logic as above.
     /// For demonstration, we assume you have a similar pattern.
-    fn pick_remaining(builder: &mut CircuitBuilder<F, D>, a: Target, b: Target, c: Target, d: Target, x0: Target, x1: Target, zero: Target) -> [Target; 2] {
+    fn pick_remaining(builder: &mut CircuitBuilder<F, D>, a: Target, b: Target, c: Target, d: Target) -> [Target; 2] {
+        let zero = builder.zero();
         // Compute nonzero conditions
         let a_eq_zero = builder.is_equal(a, zero);
         let a_nonzero = builder.not(a_eq_zero);
@@ -280,40 +281,6 @@ impl Game2048Circuit {
 
         let d_eq_zero = builder.is_equal(d, zero);
         let d_nonzero = builder.not(d_eq_zero);
-
-        // -----------------------------------------------------------
-        // Find first_nonzero tile from [a,b,c,d]
-        // -----------------------------------------------------------
-        //
-        // Conditions for which tile is first_nonzero:
-        // first_nonzero chosen from left to right:
-        // if a_nonzero: first_nonzero = a
-        // else if b_nonzero: first_nonzero = b
-        // else if c_nonzero: first_nonzero = c
-        // else if d_nonzero: first_nonzero = d
-        // else 0
-
-        // let not_a_nonzero = builder.not(a_nonzero);
-        // let cond_first_is_b_0 = builder.and(not_a_nonzero, b_nonzero);
-        // let not_cond_first_is_b_0 = builder.not(cond_first_is_b_0);
-        // let cond_first_is_c_0 = builder.and(not_a_nonzero, not_cond_first_is_b_0);
-        // let cond_first_is_c_1 = builder.and(cond_first_is_c_0, c_nonzero);
-        // let not_cond_first_is_c_1 = builder.not(cond_first_is_c_1);
-        // let cond_first_is_d_0 = builder.and(not_a_nonzero, not_cond_first_is_b_0);
-        // let cond_first_is_d_1 = builder.and(cond_first_is_d_0, not_cond_first_is_c_1);
-        // let cond_first_is_d = builder.and(cond_first_is_d_1, d_nonzero);
-
-        // first_nonzero_val = 0 initially
-        // let mut first_nonzero_val = zero;
-        // // if cond_first_is_a (which is a_nonzero), first_nonzero_val = a
-        // // we already have a_nonzero, reuse it
-        // first_nonzero_val = builder._if(a_nonzero, a, first_nonzero_val);
-        // // if cond_first_is_b_0, first_nonzero_val = b
-        // first_nonzero_val = builder._if(cond_first_is_b_0, b, first_nonzero_val);
-        // // if cond_first_is_c_1, first_nonzero_val = c
-        // first_nonzero_val = builder._if(cond_first_is_c_1, c, first_nonzero_val);
-        // // if cond_first_is_d, first_nonzero_val = d
-        // first_nonzero_val = builder._if(cond_first_is_d, d, first_nonzero_val);
 
         // Determine booleans to know which tile was picked as first_nonzero:
         // x0_from_a = a_nonzero and no other chosen before
@@ -373,22 +340,6 @@ impl Game2048Circuit {
         // second_nonzero = first nonzero from [d]
         let sec_from_d_if_c_pre = x0_from_c;
         let sec_from_d_if_c = builder.and(sec_from_d_if_c_pre, d_nonzero);
-
-        // If x0_from_d:
-        // No second nonzero
-        // (All zero if we reached here)
-
-        // If no x0_from_* true means no first nonzero chosen => no second also.
-
-        // Compute second_nonzero_val
-        // let mut second_nonzero_val = zero;
-        // second_nonzero_val = builder._if(sec_from_b_if_a, b, second_nonzero_val);
-        // second_nonzero_val = builder._if(sec_from_c_if_a, c, second_nonzero_val);
-        // second_nonzero_val = builder._if(sec_from_d_if_a, d, second_nonzero_val);
-        // second_nonzero_val = builder._if(sec_from_c_if_b, c, second_nonzero_val);
-        // second_nonzero_val = builder._if(sec_from_d_if_b, d, second_nonzero_val);
-        // second_nonzero_val = builder._if(sec_from_d_if_c, d, second_nonzero_val);
-        // If none matched, it remains zero.
 
         // Determine booleans for who second_nonzero came from:
         // For simplicity, we can define:
